@@ -13,7 +13,3 @@
 - ✅ AI metadata and EXIF
 - ✅ Easily parsable (struct-based layout)
 - ✅ Lightweight decoder & encoder (ideal for mobile/web)
-
-
-
-The format .pi was developed using the tools and capabilities provided by Manus AI
