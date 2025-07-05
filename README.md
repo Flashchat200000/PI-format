@@ -63,8 +63,9 @@ CMake 3.15+
 
 Generated bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
-cd YOUR_REPO
+git clone https://github.com/Flashchat200000/PI-format.git
+cd
+https://github.com/Flashchat200000/PI-format.git
 
 # Configure and build the project
 cmake -B build
