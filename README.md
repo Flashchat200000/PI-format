@@ -20,26 +20,13 @@ File Structure
 
 The file is structured to allow for immediate verification and lazy loading. The footer is read first to locate critical sections.
 
-Generated code
-+--------------------------------+
-|      File Header (Metadata)    |
-+--------------------------------+
-|                                |
-|   Compressed Data Block (zstd) |
-|   (Contains all chunks: MESH,  |
-|    NODE, TREE, SCPT, etc.)     |
-|                                |
-+--------------------------------+
-|  Cryptographic Signature Chunk |
-+--------------------------------+
-|    File Footer (Offsets)       |
-+--------------------------------+
+
 
 Secure Loading & Parsing Logic
 
 The SceneReader follows a strict, security-conscious procedure:
 
-Generated code
+ code
 1. Read Footer -> Get offsets for Data Block and Signature.
 2. Read Header -> Get metadata (e.g., compression type).
 3. Read Compressed Data Block into memory.
