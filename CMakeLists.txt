@@ -21,7 +21,17 @@ target_include_directories(pi-format INTERFACE
 
 # Link dependencies to our library
 find_package(Threads REQUIRED)
-find_package(Zstd REQUIRED)
+# --- DEPENDENCIES ---
+# Include the CMake module for fetching dependencies
+include(FetchContent)
+
+# Download and set up Zstd
+FetchContent_Declare(
+  zstd
+  GIT_REPOSITORY https://github.com/facebook/zstd.git
+  GIT_TAG        v1.5.5 # Use a specific, stable version
+)
+FetchContent_MakeAvailable(zstd)
 target_link_libraries(pi-format INTERFACE Threads::Threads Zstd::zstd)
 
 # --- APPLICATIONS AND TESTS ---
