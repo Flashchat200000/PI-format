@@ -408,4 +408,64 @@ pix::util::Status SecureWriter::Finalize() {
     PIX_RETURN_IF_ERROR(writer.WriteBE(kSpecVersion));
     PIX_RETURN_IF_ERROR(writer.WriteBE((uint64_t)recipients_.size()));
     for(const auto& [id, pub_key] : recipients_) {
-        PIX_A
+        PIX_ASSIGN_OR_RETURN(Key encrypted_session_key, crypto_provider_->EncryptKey(session_key, pub_key));
+        PIX_RETURN_IF_ERROR(writer.WriteString(id));
+        PIX_RETURN_IF_ERROR(writer.WriteBE<uint32_t>(encrypted_session_key.size()));
+        PIX_RETURN_IF_ERROR(writer.WriteBytes(encrypted_session_key));
+    }
+    PIX_RETURN_IF_ERROR(writer.WriteBytes(encrypted_payload));
+    return pix::util::Status::Ok();
+}
+
+// UniversalLoader Implementation
+pix::util::StatusOr<std::unique_ptr<Reader>> UniversalLoader::Load(
+    const std::filesystem::path& path, const std::string& recipient_id, const Key* private_key,
+    std::shared_ptr<ConceptualCryptoProvider> crypto_provider)
+{
+    auto file_stream = std::make_unique<std::ifstream>(path, std::ios::binary);
+    if (!*file_stream) return pix::util::Status::Error("Cannot open file: " + path.string());
+    
+    internal::BinaryReader reader(file_stream.get());
+    PIX_ASSIGN_OR_RETURN(uint32_t signature, reader.ReadBE<uint32_t>());
+    reader.Seek(0);
+    
+    if (signature == kPixuSignature) {
+        return Reader::Create(std::move(file_stream));
+    } else if (signature == kPixsSignature) {
+        if (!private_key || recipient_id.empty() || !crypto_provider) return pix::util::Status::Error("Secure file requires key, ID, and crypto provider");
+        reader.Seek(4); // Skip signature
+        PIX_ASSIGN_OR_RETURN(uint16_t version, reader.ReadBE<uint16_t>());
+        if (version > kSpecVersion) return pix::util::Status::Error("Unsupported secure file version");
+        
+        PIX_ASSIGN_OR_RETURN(uint64_t recipient_count, reader.ReadBE<uint64_t>());
+        std::optional<Key> encrypted_session_key;
+        for(uint64_t i = 0; i < recipient_count; ++i) {
+            PIX_ASSIGN_OR_RETURN(std::string id, reader.ReadString());
+            PIX_ASSIGN_OR_RETURN(uint32_t key_len, reader.ReadBE<uint32_t>());
+            if (id == recipient_id) { PIX_ASSIGN_OR_RETURN(encrypted_session_key, reader.ReadBytes(key_len)); }
+            else { reader.Seek(reader.Tell() + key_len); }
+        }
+        if (!encrypted_session_key) return pix::util::Status::NotFound("Recipient not found in secure file");
+
+        PIX_ASSIGN_OR_RETURN(Key session_key, crypto_provider->DecryptKey(*encrypted_session_key, *private_key));
+        
+        uint64_t payload_offset = reader.Tell();
+        reader.SeekFromEnd(0);
+        uint64_t payload_size = reader.Tell() - payload_offset;
+        reader.Seek(payload_offset);
+        
+        PIX_ASSIGN_OR_RETURN(byte_vec encrypted_payload, reader.ReadBytes(payload_size));
+        PIX_ASSIGN_OR_RETURN(byte_vec decrypted_payload, crypto_provider->Decrypt(encrypted_payload, session_key));
+        
+        auto decrypted_stream = std::make_unique<std::stringstream>(std::string(decrypted_payload.begin(), decrypted_payload.end()));
+        return Reader::Create(std::move(decrypted_stream));
+    }
+    return pix::util::Status::Error("Unknown file signature");
+}
+} // namespace pix::ultimate::v4
+
+
+// --- DEMONSTRATION ---
+#include "pix_ultimate_demo.inc" // In a real project, this would be main.cpp
+
+#endif // PIX_ULTIMATE_V4_2_H_
