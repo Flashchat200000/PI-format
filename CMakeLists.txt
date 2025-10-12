@@ -32,7 +32,7 @@ FetchContent_Declare(
   GIT_TAG        v1.5.5 # Use a specific, stable version
 )
 FetchContent_MakeAvailable(zstd)
-target_link_libraries(pi-format INTERFACE Threads::Threads Zstd::zstd)
+target_link_libraries(pi-format INTERFACE Threads::Threads zstd_static)
 
 # --- APPLICATIONS AND TESTS ---
 
