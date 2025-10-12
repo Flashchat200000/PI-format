@@ -1,93 +1,147 @@
 
-PIX is a high-performance, security-first file format designed for the next generation of web graphics. It combines procedural generation, cryptographic integrity, and a unique dual-mode architecture for universal compatibility.
-PIX is not just another image format. It's a container that describes how to generate content, rather than just storing static pixels. This allows for incredibly rich, dynamic, and interactive graphics to be delivered in a minimal footprint, without compromising on security or performance.
+Version: 4.2
+Status: Stable
 
-Key Features
+1. Overview
 
-🔐 Cryptography-First Security: Every PIX file is protected by a mandatory cryptographic signature (e.g., ECDSA, RSA - specific provider is pluggable). The signature of the compressed data block is verified before any decompression or parsing occurs, mitigating a wide range of attacks. This is not CRC32; this is enterprise-grade integrity and authenticity.
+The PI Ultimate (.pixu) format is a container for 3D scene data, designed for robustness, extensibility, and high-performance, asynchronous loading. It utilizes a declarative task graph to define rendering logic and dependencies.
 
-🧠 Procedural Rendering: At its core, PIX stores a graph of procedural nodes, not just pixels. This means complex textures, gradients, and shapes can be described as a recipe in a few kilobytes, enabling infinite resolution and dynamic content.
+The PI Secure (.pixs) format is a cryptographic wrapper around a standard .pixu file, providing end-to-end encryption for secure asset distribution.
 
-🔄 Smart/Dumb Client Architecture: PIX solves the adoption problem with a built-in fallback cache. A "dumb" client (like a standard <img> tag) can display a simple preview, while a "smart" client (with the WASM renderer) can unlock the full, dynamic, procedural content.
+2. General Principles
+2.1. Endianness
 
-🚀 Performance via WebAssembly: The core parsing and rendering logic is written in modern C++ for maximum performance and memory safety. It's compiled to a lightweight WebAssembly module, allowing it to run securely and efficiently in any modern browser.
+All multi-byte integer types (uint16_t, uint32_t, uint64_t, int64_t) are stored in Big-Endian (Network Byte Order).
 
-Architectural Overview
+2.2. String Encoding
 
-PIX is designed for robustness and efficiency. The file structure and parsing logic are built to be secure and fast.
+Strings are stored with a uint32_t length prefix, followed by the character data encoded in UTF-8.
 
-File Structure
+Type	Name	Description
+uint32_t	Length	Number of bytes in the string.
+char[Length]	Data	UTF-8 encoded string data.
+2.3. Data Integrity
 
-The file is structured to allow for immediate verification and lazy loading. The footer is read first to locate critical sections.
+Data integrity is ensured via CRC32 checksums for critical data sections.
 
+3. PI Ultimate (.pixu) File Structure
 
+A .pixu file is composed of three main parts: a fixed-size header, a variable-size collection of data segments, and a variable-size Master Block (index).
 
-Secure Loading & Parsing Logic
+Component	Description
+File Header	Fixed-size block containing metadata about the file.
+Data Segments	Unordered collection of compressed resource data chunks.
+Master Block	The central index describing all content in the file.
+Master Block Checksum	A CRC32 checksum of the entire Master Block.
+3.1. File Header
 
-The SceneReader follows a strict, security-conscious procedure:
+The first 22 bytes of the file.
 
- code
-1. Read Footer -> Get offsets for Data Block and Signature.
-2. Read Header -> Get metadata (e.g., compression type).
-3. Read Compressed Data Block into memory.
-4. Read Signature Chunk.
-5. --> VERIFY SIGNATURE of the compressed block. <-- CRITICAL STEP
-6. If verification passes:
-7.    Decompress data block into an in-memory stream.
-8.    Parse the master object index.
-9.    Lazily parse individual objects from the stream on demand.
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-IGNORE_WHEN_COPYING_END
-Technical Specifications
+Offset (bytes)	Size (bytes)	Type	Description
+0	4	uint32_t	Signature: 0x50495855 ("PIXU")
+4	2	uint16_t	Specification version (e.g., 4).
+6	8	uint64_t	Feature Flags (bitmask). See Section 3.2.1.
+14	8	uint64_t	Byte offset from the start of the file to the Master Block.
+3.2. Master Block
 
-Signature: PIX3 (v26)
+The Master Block is a stream of typed, size-prefixed data blocks. This structure allows new block types to be added in future versions while maintaining backward compatibility.
 
-Core Chunks: TREE (Scene Tree), NODE (Procedural Graph), MESH (3D Data), SCPT (Scripts), INDX (Master Index), SIGN (Signature).
+A parser reads the Block ID, reads the Block Size, and then can either parse the block's data or skip Block Size bytes to get to the next block.
 
-Data Integrity: Cryptographic signature verification via a pluggable ICryptoProvider.
+Each block has the following structure:
 
-Architecture: Append-only friendly structure with a master index for fast object lookups.
+Type	Name	Description
+uint8_t	Block ID	An enum value identifying the block type.
+uint64_t	Block Size	The total size in bytes of the Block Data field.
+byte[Size]	Block Data	The payload of the block.
+3.2.1. Block Types (Block ID)
+ID	Constant Name	Description
+1	kMetadata	Contains key-value string metadata.
+2	kResources	A list of all addressable resources.
+3	kFallbacks	A list of fallback data items.
+4	kTaskGraph	The declarative task graph for rendering.
+3.2.2. Block: Metadata (ID = 1)
 
-Compatibility: Dual-mode access via fallback cache and full procedural rendering.
+A simple dictionary of key-value pairs.
 
-Getting Started
+Type	Name	Description
+uint64_t	Pair Count	Number of key-value pairs.
+...	Pairs	Pair Count instances of the following:
+string	Key	The metadata key.
+string	Value	The metadata value.
+3.2.3. Block: Resources (ID = 2)
 
-To build the reference implementation from the source, you will need:
+Defines all primary data assets.
 
-A C++20 compatible compiler (GCC, Clang, MSVC)
+Type	Name	Description
+uint64_t	Res. Count	Number of ResourceDescriptor entries.
+...	Descriptors	Res. Count instances of ResourceDescriptor.
 
-CMake 3.15+
+ResourceDescriptor Structure:
 
-Generated bash
-# Clone the repository
-git clone https://github.com/Flashchat200000/PI-format.git
-cd
-https://github.com/Flashchat200000/PI-format.git
+Type	Name	Description
+uint64_t	ID	Unique identifier for this resource.
+uint16_t	Type	Enum (ResourceType) describing the data.
+string	Name	Human-readable name (e.g., "player.mesh").
+uint64_t	Seg. Count	Number of data segments for this resource.
+DataSegmentLocation[Count]	Segments	An array of DataSegmentLocation structs.
 
-# Configure and build the project
-cmake -B build
-cmake --build build
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-Bash
-IGNORE_WHEN_COPYING_END
+DataSegmentLocation Structure:
 
+Type	Name	Description
+uint64_t	Offset	Byte offset to the compressed data segment.
+uint32_t	Compressed Size	Size of the compressed data on disk.
+uint32_t	Uncompressed Size	Size of the data after decompression.
+uint32_t	CRC32 Checksum	Checksum of the compressed data.
+3.2.4. Block: Task Graph (ID = 4)
 
-Roadmap
+Defines the directed acyclic graph (DAG) of operations.
 
-Expand the library of procedural nodes (noise, filters, etc.).
+Type	Name	Description
+uint64_t	Node Count	Number of GraphNode entries.
+...	Nodes	Node Count instances of GraphNode.
+uint64_t	Root Node ID	The ID of the final node in the graph.
 
-Implement additional compression providers (e.g., LZ4).
+GraphNode Structure:
 
-Enhance the animation system with physics-based curves.
+Type	Name	Description
+uint64_t	ID	Unique identifier for this node.
+uint16_t	Type	Enum (NodeType) of the operation.
+string	Intent	Human-readable description of the node.
+uint64_t	Input Count	Number of node IDs this node depends on.
+uint64_t[Count]	Inputs	An array of input GraphNode IDs.
+uint64_t	Param Count	Number of parameters for this node.
+...	Params	Param Count instances of key-value parameters.
 
-Formalize the specification document.
+NodeParameter Structure: This is a variant type.
 
-License
+Type	Name	Description
+uint8_t	Type Index	0: monostate, 1: int64, 2: string.
+...	Value	The value, with type matching the index.
+3.3. Master Block Checksum
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+The final 4 bytes of the file are a uint32_t CRC32 checksum calculated over the entire Master Block (from its start at Master Block Offset to the end of the file, minus these 4 bytes).
+
+4. PI Secure (.pixs) File Structure
+
+The .pixs file is a wrapper that contains a fully-formed, encrypted .pixu file.
+
+Component	Description
+Secure Header	Contains format info and encrypted session keys.
+Encrypted Payload	An entire .pixu file, encrypted symmetrically.
+4.1. Secure Header
+Offset (bytes)	Size (bytes)	Type	Description
+0	4	uint32_t	Signature: 0x50495853 ("PIXS")
+4	2	uint16_t	Specification version (e.g., 4).
+6	8	uint64_t	Number of recipients.
+14	...	...	Recipient Count instances of Recipient Blocks.
+
+Recipient Block Structure:
+
+Type	Name	Description
+string	Recipient ID	Identifier for the key owner (e.g., "bob").
+uint32_t	Enc. Key Length	Size of the encrypted session key in bytes.
+byte[Length]	Encrypted Session Key	The session key, asymmetrically encrypted with the recipient's public key.
+4.2. Encrypted Payload
+
+This section immediately follows the last Recipient Block. It contains the complete binary data of a .pixu file (including its header, data segments, and master block), symmetrically encrypted using the decrypted session key
