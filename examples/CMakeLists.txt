@@ -9,11 +9,11 @@ add_executable(create-demo demo.cpp)
 target_link_libraries(create-demo PRIVATE pi-format)
 
 add_executable(pix-inspect inspector.cpp)
-target_link_libraries(pix-inspect PRIVATE pi-format)```
+target_link_libraries(pix-inspect PRIVATE pi-format)
 **Update:** A more correct and cleaner way is to add search paths for each target separately.
 
  Fixing `examples/CMakeLists.txt`:
-```cmake
+cmake
 # examples/CMakeLists.txt
 
 add_executable(create-demo demo.cpp)
