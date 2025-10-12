@@ -16,8 +16,7 @@ add_library(pi-format INTERFACE)
 # are located in the 'include' directory.
 target_include_directories(pi-format INTERFACE 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
+    $<INSTALL_INTERFACE:include>)
 
 # Link dependencies to our library
 find_package(Threads REQUIRED)
