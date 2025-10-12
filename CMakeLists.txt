@@ -1,30 +1,38 @@
+# CMakeLists.txt (root)
+
+# CMake version and project name
 cmake_minimum_required(VERSION 3.10)
- project(PI-Format VERSION 4.2)
+project(PI-Format VERSION 4.2 LANGUAGES CXX)
 
- set(CMAKE_CXX_STANDARD 17)
- set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
- # Find dependencies
- find_package(Threads REQUIRED)
- find_package(Zstd REQUIRED)
+# --- PI-FORMAT LIBRARY ---
+# Create our library. It’s header-only, so we use INTERFACE.
+add_library(pi-format INTERFACE)
 
- # library
- add_library(pi-format INTERFACE)
- target_include_directories(pi-format INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
- target_link_libraries(pi-format INTERFACE Threads::Threads Zstd::zstd)
+# Tell CMake that public headers for pi-format
+# are located in the 'include' directory.
+target_include_directories(pi-format INTERFACE 
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
 
- # Tool demo
- add_executable(create-demo  demo.cpp)
- target_link_libraries(create-demo PRIVATE pi-format)
+# Link dependencies to our library
+find_package(Threads REQUIRED)
+find_package(Zstd REQUIRED)
+target_link_libraries(pi-format INTERFACE Threads::Threads Zstd::zstd)
 
- # Tool inspector
- add_executable(pix-inspect inspector.cpp)
- target_link_libraries(pix-inspect PRIVATE pi-format)
- Enable test support()
+# --- APPLICATIONS AND TESTS ---
 
+# Include the examples folder in the build.
+# CMake will go into 'examples' and look for another CMakeLists.txt there.
+add_subdirectory(examples)
+
+# Enable testing support
 enable_testing()
 
-Add our test directory to the build
-
+# Include the tests folder in the build.
+# CMake will go into 'tests' and look for yet another CMakeLists.txt there.
 add_subdirectory(tests)
-
