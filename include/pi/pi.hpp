@@ -1,7 +1,7 @@
 // ====================================================================================
 // PI Ultimate & PIX Secure - Final Reference Implementation
 //
-// Version: 4.3 (The "For Fuck's Sake, Just Compile" Edition)
+// Version: 4.3 (The Compile Edition)
 //
 // This is the complete, single-file, fully corrected reference implementation.
 // All previous compilation errors (macros, formatting, incomplete types) have
