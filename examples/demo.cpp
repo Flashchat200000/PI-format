@@ -16,7 +16,7 @@
 #include <cstdlib> // For EXIT_SUCCESS, EXIT_FAILURE
 
 // Assumes 'pix_ultimate.hpp' is in the same directory or in the include path.
-#include "pix_ultimate.hpp"
+#include "pi/pi.hpp"
 
 // Use the library's namespace.
 using namespace pix::ultimate::v4;
