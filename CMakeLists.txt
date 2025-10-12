@@ -20,3 +20,11 @@ cmake_minimum_required(VERSION 3.10)
  # Tool inspector
  add_executable(pix-inspect inspector.cpp)
  target_link_libraries(pix-inspect PRIVATE pi-format)
+ Enable test support
+
+enable_testing()
+
+Add our test directory to the build
+
+add_subdirectory(tests)
+
